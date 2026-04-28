@@ -1,7 +1,7 @@
 # Contexto del proyecto — calculadora de notas chilena mobile-first
 
 > Documento vivo. Cada iteración de producto se refleja primero acá, antes de pasar a implementación.
-> Última actualización: 24 de abril de 2026 (v0.2.1 — Promedio ponderado + edición de ramo + escalas guardadas).
+> Última actualización: 28 de abril de 2026 (v0.3.1 — Affordance de controles + slider con default sensato).
 > Nombre del producto: **Compañero de Notas** (placeholder iterable).
 
 ## Tabla de contenidos
@@ -1239,9 +1239,50 @@ Esta versión cierra deuda larga: el modo ponderado del Promedio (§9.3 / §10.4
 
 **Pipeline**: 77 tests pass (16 redondeo + 11 escala + 11 storage + **18** promedio (+10) + **21** meta (+4)), 0 errors/warnings en svelte-check, build ~46 KB JS gz + ~5 KB CSS gz. Bajo el target de 100 KB.
 
-### Pendiente después de v0.2.1
+### v0.3.1 — Affordance de controles + slider con default sensato (28 abril 2026)
 
-- v0.3.1 — Meta modo "ajustar individualmente" para múltiples pendientes
+Iteración de polish disparada por feedback de usuarios reales: dos controles críticos no se leían como interactivos, y el slider de Escala arrancaba en cero (estado vacío que obliga a moverse para empezar a leer notas). Tres bloques: card "Escala activa" + ThemeToggle + slider sticky.
+
+**Bloque 1 — Card "Escala activa" se lee como botón**:
+- El ▼ minúsculo en la esquina del card se confundía con etiqueta de estado, igual que las cards informativas pasivas (ej. "Puntaje obtenido"). Reescrito el layout a `[ESCALA ACTIVA] / [50 pts · 60% · 2,0–7,0   CAMBIAR ›]`: la palabra "CAMBIAR" en uppercase 11px + chevron `›` 20px ambos en `--accent-primary`, alineados a la derecha del summary. El chevron rota 90° al expandir el panel.
+- Border del card: `color-mix(in srgb, var(--accent-primary) 28%, transparent)` — visiblemente diferenciado de `border-subtle` que usan las cards pasivas. Hover sube a 50% + bg con tinte accent 5%; `:active` flash 100ms con tinte 12% para feedback táctil mobile.
+- Reusa el patrón `color-mix` del `badge-ponderado` ya existente, sin variables nuevas.
+
+**Bloque 2 — ThemeToggle visible y bien afordado**:
+- El ícono de luna de 16px sin contenedor en la esquina superior derecha era invisible para testers. Pasó a contenedor circular 44×44 (área tappable WCAG mobile), bg `bg-secondary` + border accent 28% (mismo patrón que la card de escala), ícono 22px.
+- Cambió de cycle 3-estados (`auto → dark → light`) a toggle 2-estados (`claro ↔ oscuro`). El default `tema = 'auto'` se mantiene **hasta el primer tap** — apenas el usuario alterna, persiste el valor explícito. Esto baja la fricción para la mayoría que ya configuró su preferencia a nivel OS.
+- El ícono representa **lo que va a pasar** al tocarlo, no el estado actual: luna `☾` en modo claro (sugiere "tocar para oscuro"), sol `☼` en modo oscuro. Patrón estándar iOS/Android. Detección del tema activo combina `store.datos.preferencias.tema` con `matchMedia('prefers-color-scheme: dark)' resuelta dinámicamente vía `$effect`.
+
+**Bloque 3 — Slider arranca en `papr` y respeta intención del usuario**:
+- Helper puro nuevo en `escala.ts`: `puntajeAprobacion(pmax, exigencia) = Math.round(pmax × exigencia)`. El slider arranca ahí (= 30 con defaults 50 × 0,60) en vez de en cero. La nota hero arranca mostrando 4,0 APROBADO, contexto inmediato de "qué significa la escala configurada".
+- Flag reactiva nueva `puntajeTocadoPorUsuario: boolean` en `EscalaActivaState`. Mientras la flag esté en `false`, cambiar `pmax` o `exigencia` arrastra el slider al nuevo `papr` automáticamente (ej. baja pmax de 50 a 32 → slider salta de 30 a 19). Apenas el usuario mueve el slider o ingresa un puntaje a mano, la flag se enciende y los siguientes cambios de pmax/exigencia **no** lo arrastran — solo clampean si el valor excede el nuevo `pmax`.
+- Caso de uso: el profesor está corrigiendo a un alumno que sacó 25 puntos, decide experimentar con la exigencia para ver cómo cambia la nota. Antes el sistema dejaba 25 (porque setExigenciaPct nunca tocaba puntaje); ahora explícitamente protege ese caso vía la flag — bug latente si en el futuro cambia el comportamiento default.
+- `reset()` y `cargarEscalaGuardada()` resetean la flag y aplican el `papr` nuevo: cargar una escala distinta = nuevo contexto.
+
+**Bloque 4 — Tabla con highlight suave para puntajes decimales**:
+- Helper puro nuevo: `filasResaltadas(puntaje, pmax)` devuelve `{ fuerte: number | null, suaves: number[] }`. Si el puntaje cae en un entero, una sola fila resaltada `fuerte` (highlight existente con bg accent 12% + barra lateral `box-shadow: inset 3px`). Si cae entre dos enteros (slider en step 0,5 / 0,25), nadie es `fuerte` y los dos vecinos son `suaves`: bg accent **6%**, sin barra lateral, texto en peso regular. Comunica "tu puntaje está entre estas dos filas" sin reclamar que ninguna sea la respuesta exacta.
+- `TablaEscala.svelte` aplica `class:activa` (cualquier highlight) + `class:suave` (modificador). El target del scrollIntoView prioriza la fila `fuerte` cuando existe, si no usa el techo de las suaves.
+
+**Tests añadidos** (12 nuevos, total 89):
+- `escala.test.ts` (+6): `puntajeAprobacion` con default chileno, redondeo de productos no-enteros, escalas universitarias; `filasResaltadas` con entero (solo fuerte), decimal (dos suaves, ningún fuerte), clamp fuera de rango.
+- `escalaActiva.test.ts` (nuevo, +6): default `puntaje = papr` no cero, `pmax`/`exigencia` arrastran al slider sin tocar, una vez tocado se queda quieto, clamp si pmax baja por debajo del puntaje tocado, `reset()` limpia la flag. La clase `EscalaActivaState` se exportó como named export para permitir instancias aisladas en tests.
+
+**Verificación dogfood (preview, mobile)**:
+- Default visit en OS-light: bg papel roneo + toggle con luna ☾ (acción: oscurecer). Tap → bg dark + toggle con sol ☼. Persiste `tema='dark'` en localStorage. Re-tap → tema='light'.
+- Card "ESCALA ACTIVA" con border azul lápiz pasta visiblemente más marcado que las cards pasivas. Tap → panel se expande, chevron rota 90°.
+- Slider arranca en 30, hero muestra 4,0 APROBADO. Cambio pmax a 32 → slider auto a 19 (= round(32×0,60)). Toco slider a 25 → cambio exigencia a 70% → slider sigue en 25 (flag protege).
+- Tabla con puntaje 25,5 (incremento 0,25): rows 25 y 26 con bg `srgb(...) / 0.06` y sin box-shadow. Mover a 25 entero: solo row 25 con bg `0.12` + barra lateral azul.
+
+**Hallazgos del dogfood v0.3.1**:
+- Confusión inicial al testear en preview: tras un click del toggle, recargar mostraba `tema='dark'` aunque venía de borrar localStorage. La causa fue el handler `beforeunload → store.flush()` en `App.svelte`: el reload dispara beforeunload, que escribe sincrónicamente la última snapshot en memoria. Comportamiento correcto en producción (no perdés cambios al cerrar pestaña), pero requiere flushear el debounce con un set explícito antes del clear cuando se debuggea por consola. Documentado acá para no redescubrirlo.
+- El default de `puntajeAprobacion` interactúa de forma natural con la regla del slider en step 0,25: 0,60 × pmax es ronda-sensible (50×0,6 = 30 exacto, 32×0,6 = 19,2 → 19), sin acumulación de error en ninguno de los pasos. Si v0.4+ agrega exigencias atípicas tipo 0,57, sigue funcionando porque el `Math.round` se aplica al final.
+- El highlight 6% en light mode es muy sutil (papel roneo + 6% azul lápiz pasta apenas se distingue), pero ese es exactamente el tono pedido: marcar contexto sin gritar. En dark mode el contraste es algo más visible (azul eléctrico al 6% sobre `#0A1220`).
+
+**Pipeline**: 89 tests pass (16 redondeo + 11 storage + **17** escala (+6) + 18 promedio + 21 meta + **6** escalaActiva (nuevo)), 0 errors/warnings en svelte-check, sin errores de consola. Bundle no medido — sin imports nuevos.
+
+### Pendiente después de v0.3.1
+
+- v0.3.2 — Meta modo "ajustar individualmente" para múltiples pendientes
 - v0.4.0 — Onboarding 2 pasos + estados de error y polish + persistencia de meta entre reloads
 - v0.5+ — Promedio anual / final usando parciales declarados (§10.5.1)
 

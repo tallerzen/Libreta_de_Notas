@@ -1,4 +1,4 @@
-import { ESCALA_DEFAULT } from '$lib/algoritmos/escala';
+import { ESCALA_DEFAULT, puntajeAprobacion } from '$lib/algoritmos/escala';
 import type { Escala } from '$lib/algoritmos/escala';
 import { store } from '$lib/storage/store.svelte.ts';
 import type { EscalaGuardada } from '$lib/storage/schema';
@@ -24,13 +24,23 @@ export type IncrementoSlider = 1 | 0.5 | 0.25;
  * getter/setter de esta clase para no exponer la dependencia con la capa
  * de storage en cada componente.
  */
-class EscalaActivaState {
+export class EscalaActivaState {
   pmax = $state<number>(ESCALA_DEFAULT.pmax);
   exigencia = $state<number>(ESCALA_DEFAULT.exigencia);
   nmin = $state<number>(ESCALA_DEFAULT.nmin);
   napr = $state<number>(ESCALA_DEFAULT.napr);
   nmax = $state<number>(ESCALA_DEFAULT.nmax);
-  puntaje = $state<number>(0);
+  puntaje = $state<number>(
+    puntajeAprobacion(ESCALA_DEFAULT.pmax, ESCALA_DEFAULT.exigencia)
+  );
+  /**
+   * Marcado en `true` apenas el usuario mueve el slider o ingresa un puntaje
+   * a mano. Una vez tocado, los cambios de `pmax` o `exigencia` ya no
+   * arrastran el puntaje al nuevo papr — el profesor que está corrigiendo
+   * a un alumno no quiere que se le mueva el puntaje bajo los pies cuando
+   * experimenta con la escala.
+   */
+  puntajeTocadoPorUsuario = $state<boolean>(false);
   nombre = $state<string>('Escala chilena por defecto');
 
   get incremento(): IncrementoSlider {
@@ -50,12 +60,19 @@ class EscalaActivaState {
   setPmax(valor: number) {
     const limpio = Math.max(1, Math.round(valor));
     this.pmax = limpio;
-    if (this.puntaje > limpio) this.puntaje = limpio;
+    if (!this.puntajeTocadoPorUsuario) {
+      this.puntaje = puntajeAprobacion(limpio, this.exigencia);
+    } else if (this.puntaje > limpio) {
+      this.puntaje = limpio;
+    }
   }
 
   setExigenciaPct(pct: number) {
     const limpio = Math.min(100, Math.max(1, Math.round(pct))) / 100;
     this.exigencia = limpio;
+    if (!this.puntajeTocadoPorUsuario) {
+      this.puntaje = puntajeAprobacion(this.pmax, limpio);
+    }
   }
 
   setIncremento(nuevo: IncrementoSlider) {
@@ -67,6 +84,7 @@ class EscalaActivaState {
 
   setPuntaje(valor: number) {
     this.puntaje = Math.min(this.pmax, Math.max(0, valor));
+    this.puntajeTocadoPorUsuario = true;
   }
 
   reset() {
@@ -75,7 +93,8 @@ class EscalaActivaState {
     this.nmin = ESCALA_DEFAULT.nmin;
     this.napr = ESCALA_DEFAULT.napr;
     this.nmax = ESCALA_DEFAULT.nmax;
-    this.puntaje = 0;
+    this.puntajeTocadoPorUsuario = false;
+    this.puntaje = puntajeAprobacion(ESCALA_DEFAULT.pmax, ESCALA_DEFAULT.exigencia);
     this.nombre = 'Escala chilena por defecto';
     store.datos.preferencias.incremento_slider_default = 1;
   }
@@ -107,8 +126,9 @@ class EscalaActivaState {
 
   /**
    * Carga una escala guardada al estado activo. Devuelve `false` si el id
-   * no existe. El puntaje actual se mantiene si cabe en el nuevo `pmax`;
-   * si no, se clampea (lo hace `setPmax` vía `setPuntaje`).
+   * no existe. Cargar una escala = nuevo contexto: el puntaje arranca de
+   * nuevo en `papr` y la flag de "tocado" vuelve a cero, igual que en una
+   * sesión fresca.
    */
   cargarEscalaGuardada(id: string): boolean {
     const g = store.datos.escalas_guardadas.find((e) => e.id === id);
@@ -120,7 +140,8 @@ class EscalaActivaState {
     this.nmax = g.nota_max;
     this.nombre = g.nombre;
     store.datos.preferencias.incremento_slider_default = g.incremento;
-    this.puntaje = Math.min(this.puntaje, g.puntaje_max);
+    this.puntajeTocadoPorUsuario = false;
+    this.puntaje = puntajeAprobacion(g.puntaje_max, g.exigencia);
     return true;
   }
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { calcularNota, ESCALA_DEFAULT, type Escala } from './escala';
+import {
+  calcularNota,
+  ESCALA_DEFAULT,
+  filasResaltadas,
+  puntajeAprobacion,
+  type Escala
+} from './escala';
 
 describe('calcularNota — escala chilena por defecto (50 pts, 60%, 2–7)', () => {
   it('puntaje 0 da la nota mínima', () => {
@@ -52,6 +58,45 @@ describe('escalas alternativas comunes', () => {
     const nota = calcularNota(escala, 24);
     expect(nota).toBeGreaterThan(4);
     expect(nota).toBeLessThanOrEqual(7);
+  });
+});
+
+describe('puntajeAprobacion — default razonable del slider', () => {
+  it('escala chilena por defecto (50 pts × 60%) cae en 30', () => {
+    expect(puntajeAprobacion(50, 0.6)).toBe(30);
+  });
+
+  it('redondea al entero más cercano cuando el producto no es entero', () => {
+    // 32 × 0,60 = 19,2 → 19; 32 × 0,70 = 22,4 → 22; 32 × 0,75 = 24
+    expect(puntajeAprobacion(32, 0.6)).toBe(19);
+    expect(puntajeAprobacion(32, 0.7)).toBe(22);
+    expect(puntajeAprobacion(32, 0.75)).toBe(24);
+  });
+
+  it('escalas universitarias típicas (100 pts × 70%) caen en 70', () => {
+    expect(puntajeAprobacion(100, 0.7)).toBe(70);
+  });
+});
+
+describe('filasResaltadas — qué filas enteras pintar en la tabla', () => {
+  it('puntaje entero: una sola fila resaltada fuerte, sin suaves', () => {
+    expect(filasResaltadas(30, 50)).toEqual({ fuerte: 30, suaves: [] });
+    expect(filasResaltadas(0, 50)).toEqual({ fuerte: 0, suaves: [] });
+  });
+
+  it('puntaje decimal: ningún fuerte, los dos vecinos enteros como suaves', () => {
+    expect(filasResaltadas(29.5, 50)).toEqual({ fuerte: null, suaves: [29, 30] });
+    expect(filasResaltadas(29.25, 50)).toEqual({ fuerte: null, suaves: [29, 30] });
+    expect(filasResaltadas(29.75, 50)).toEqual({ fuerte: null, suaves: [29, 30] });
+  });
+
+  it('clampea fuera de rango (no devuelve filas inexistentes)', () => {
+    // Por sobre pmax: el techo se cae fuera, queda solo el piso clampeado.
+    expect(filasResaltadas(60, 50)).toEqual({ fuerte: 50, suaves: [] });
+    // Decimal en el borde superior: solo el piso 49 cuenta — pmax=49.5 floor=49.
+    expect(filasResaltadas(49.5, 49.5)).toEqual({ fuerte: null, suaves: [49] });
+    // Negativo se clampea a 0.
+    expect(filasResaltadas(-3, 50)).toEqual({ fuerte: 0, suaves: [] });
   });
 });
 

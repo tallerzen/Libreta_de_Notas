@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { calcularNota, type Escala } from '$lib/algoritmos/escala';
+  import {
+    calcularNota,
+    filasResaltadas,
+    type Escala
+  } from '$lib/algoritmos/escala';
   import { formatearNota } from '$lib/util/formato.ts';
 
   interface Props {
@@ -24,18 +28,23 @@
     return out;
   });
 
-  const puntajeRedondeado = $derived(
-    Math.max(0, Math.min(Math.floor(escala.pmax), Math.round(puntajeActivo)))
+  const resaltadas = $derived(filasResaltadas(puntajeActivo, escala.pmax));
+
+  // El target de scroll: si hay highlight fuerte, esa fila; si hay solo
+  // suaves (puntaje decimal), centramos en el techo para que ambas vecinas
+  // queden visibles.
+  const filaScrollTarget = $derived(
+    resaltadas.fuerte ?? resaltadas.suaves[resaltadas.suaves.length - 1] ?? 0
   );
 
   let listaEl: HTMLUListElement | undefined = $state();
 
   // Mantiene visible la fila activa al mover el slider.
   $effect(() => {
-    void puntajeRedondeado;
+    void filaScrollTarget;
     if (!listaEl) return;
     const el = listaEl.querySelector(
-      `[data-puntaje="${puntajeRedondeado}"]`
+      `[data-puntaje="${filaScrollTarget}"]`
     ) as HTMLElement | null;
     el?.scrollIntoView({ block: 'center', behavior: 'instant' });
   });
@@ -48,9 +57,12 @@
     aria-label="Conversión puntaje a nota para toda la escala"
   >
     {#each filas as fila (fila.p)}
+      {@const esFuerte = fila.p === resaltadas.fuerte}
+      {@const esSuave = resaltadas.suaves.includes(fila.p)}
       <li
         class="fila"
-        class:activa={fila.p === puntajeRedondeado}
+        class:activa={esFuerte || esSuave}
+        class:suave={esSuave}
         data-puntaje={fila.p}
       >
         <span class="p">{fila.p}</span>
@@ -128,5 +140,19 @@
   .fila.activa .p {
     color: var(--text-primary);
     font-weight: var(--weight-bold);
+  }
+
+  /* Resaltado "suave": cuando el puntaje del slider cae entre dos enteros,
+     ambos vecinos se marcan con un fondo más sutil y sin barra lateral.
+     Indica "tu puntaje está entre estas dos filas" sin reclamar que ninguna
+     sea la respuesta exacta. */
+  .fila.activa.suave {
+    background: color-mix(in srgb, var(--accent-primary) 6%, transparent);
+    box-shadow: none;
+  }
+
+  .fila.activa.suave .p {
+    color: var(--text-secondary);
+    font-weight: var(--weight-regular);
   }
 </style>

@@ -31,6 +31,42 @@ export const ESCALA_DEFAULT: Escala = {
 };
 
 /**
+ * Puntaje (entero) que cae justo en la nota de aprobación: `pmax × exigencia`,
+ * redondeado al entero más cercano. Es el default razonable para el slider:
+ * arranca en "el alumno justo aprueba" en vez de en cero (que se ve como
+ * estado vacío y obliga a mover el slider para empezar a leer notas).
+ */
+export function puntajeAprobacion(pmax: number, exigencia: number): number {
+  return Math.round(pmax * exigencia);
+}
+
+/**
+ * Decide qué filas enteras de la tabla de escala se resaltan según el valor
+ * actual del slider:
+ *
+ *   - Si el puntaje cae justo en un entero: una sola fila resaltada `fuerte`.
+ *   - Si el puntaje es decimal (slider en 0,5 / 0,25): los dos enteros vecinos
+ *     reciben un resaltado `suave` y nadie queda como `fuerte` — el slider
+ *     está "entre filas" y ningún entero es la respuesta exacta.
+ *
+ * Clampea a `[0, floor(pmax)]` para que valores fuera de rango no devuelvan
+ * filas inexistentes.
+ */
+export function filasResaltadas(
+  puntaje: number,
+  pmax: number
+): { fuerte: number | null; suaves: number[] } {
+  const max = Math.max(0, Math.floor(pmax));
+  if (Number.isInteger(puntaje)) {
+    return { fuerte: Math.max(0, Math.min(max, puntaje)), suaves: [] };
+  }
+  const piso = Math.floor(puntaje);
+  const techo = Math.ceil(puntaje);
+  const suaves = [piso, techo].filter((v) => v >= 0 && v <= max);
+  return { fuerte: null, suaves };
+}
+
+/**
  * Calcula la nota chilena por escala lineal de dos tramos (algoritmo
  * estándar implícito, no normado por MINEDUC). Devuelve la nota ya
  * redondeada al estilo chileno (1 decimal).

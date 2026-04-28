@@ -84,13 +84,20 @@
       aria-expanded={parametrosAbiertos}
       onclick={() => (parametrosAbiertos = !parametrosAbiertos)}
     >
-      <div class="card-params-top">
-        <span class="card-params-label">Escala activa</span>
-        <span class="card-params-toggle">{parametrosAbiertos ? '▴' : '▾'}</span>
-      </div>
-      <div class="card-params-summary">
-        {escalaActiva.pmax} pts · {exigenciaPct}% ·
-        {formatearNota(escalaActiva.nmin)}–{formatearNota(escalaActiva.nmax)}
+      <span class="card-params-label">Escala activa</span>
+      <div class="card-params-row">
+        <span class="card-params-summary">
+          {escalaActiva.pmax} pts · {exigenciaPct}% ·
+          {formatearNota(escalaActiva.nmin)}–{formatearNota(escalaActiva.nmax)}
+        </span>
+        <span class="card-params-cta">
+          <span class="card-params-cta-text">Cambiar</span>
+          <span
+            class="card-params-chevron"
+            class:abierto={parametrosAbiertos}
+            aria-hidden="true"
+          >›</span>
+        </span>
       </div>
     </button>
 
@@ -324,23 +331,23 @@
     width: 100%;
     padding: var(--space-3) var(--space-4);
     background: var(--bg-secondary);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, transparent);
     border-radius: var(--radius-lg);
     text-align: left;
     cursor: pointer;
-    transition: border-color 120ms ease;
+    transition: border-color 120ms ease, background-color 120ms ease;
   }
 
   .card-params:hover,
   .card-params:focus-visible {
-    border-color: var(--border-emphasis);
+    border-color: color-mix(in srgb, var(--accent-primary) 50%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 5%, var(--bg-secondary));
     outline: none;
   }
 
-  .card-params-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .card-params:active {
+    transition-duration: 100ms;
+    background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-secondary));
   }
 
   .card-params-label {
@@ -350,15 +357,42 @@
     color: var(--text-secondary);
   }
 
-  .card-params-toggle {
-    color: var(--text-tertiary);
-    font-size: 14px;
+  .card-params-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
   }
 
   .card-params-summary {
     font-size: 15px;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
+  }
+
+  .card-params-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent-primary);
+    flex-shrink: 0;
+  }
+
+  .card-params-cta-text {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: var(--weight-bold);
+  }
+
+  .card-params-chevron {
+    font-size: 20px;
+    line-height: 1;
+    transition: transform 160ms ease;
+  }
+
+  .card-params-chevron.abierto {
+    transform: rotate(90deg);
   }
 
   .params-panel {
