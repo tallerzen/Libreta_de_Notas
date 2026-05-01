@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#F1E9D4"/>
+
+  <text
+    x="230"
+    y="315"
+    fill="#1A3A6E"
+    font-family="'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif"
+    font-size="460"
+    font-weight="400"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >Σ</text>
+
+  <text
+    x="440"
+    y="290"
+    fill="#1A3A6E"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="96"
+    font-weight="700"
+    text-anchor="start"
+    dominant-baseline="middle"
+  >Libreta de Notas</text>
+
+  <text
+    x="440"
+    y="360"
+    fill="#6D5B44"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="36"
+    font-weight="400"
+    text-anchor="start"
+    dominant-baseline="middle"
+  >Calculadora de escala chilena</text>
+
+  <g transform="translate(1000 470)">
+    <rect x="0" y="40" width="120" height="40" fill="#D52B1E"/>
+    <rect x="40" y="0" width="80" height="40" fill="#FFFFFF"/>
+    <rect x="0" y="0" width="40" height="40" fill="#0039A6"/>
+    <path
+      d="M20,5 L23.37,15.36 L34.27,15.36 L25.45,21.77 L28.82,32.14 L20,25.73 L11.18,32.14 L14.55,21.77 L5.73,15.36 L16.63,15.36 Z"
+      fill="#FFFFFF"
+    />
+  </g>
+</svg>
