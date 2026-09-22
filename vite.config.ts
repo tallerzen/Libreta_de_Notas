@@ -15,10 +15,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Compañero de Notas',
+        name: 'Libreta de Notas',
         short_name: 'Notas',
         description:
-          'Calculadora de notas chilena: escala, promedio y meta sin fricción.',
+          'Calculadora chilena de notas: convierte puntajes a escala 1,0–7,0, calcula promedios y resuelve qué nota necesitas para llegar a tu meta.',
         lang: 'es-CL',
         theme_color: '#0A1220',
         background_color: '#0A1220',
